@@ -1,8 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.concurrency import asynccontextmanager
 from pydantic import BaseModel
+from counter import VisitCounter
 
-app = FastAPI()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.counter = VisitCounter()
+    yield
+
+app = FastAPI(lifespan=lifespan)
+    
 class Model(BaseModel):
     id: str
     name: str
@@ -24,3 +32,7 @@ def read_item(item_id: int, q: str | None = None):
 @app.put("/model")
 def create_model(model: Model):
     return model
+@app.get("/visit")
+def visit(request: Request):
+    request.app.state.counter.increment()
+    return {"visit_count": request.app.state.counter.get()}
